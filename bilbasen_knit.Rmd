@@ -1,0 +1,107 @@
+---
+title: "Bilbasen"
+author: "Frederik Holmelund Kjærskov"
+date: "23 February 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Crawl bilbasen.dk
+
+I wanted to practice web crawling skills and opted for crawling [bilbasen.dk](http://www.bilbasen.dk). It is fairly well structured and as I plan on buying a car in a near future the choice was further justified. 
+
+First we load the neccessary libraries.
+```{r message=FALSE, warning=FALSE}
+library('ggplot2') # visualization
+library('dplyr') # data manipulation
+library('randomForest') # classification algorithm
+library('rvest')
+```
+
+Next we enter the page we wish to crawl and read the content of that webpage. Note how the search queries is embedded in the link and how the page is paginated by the "page=1" at the end. The latter allow us to crawl trough all the pages using a simple page number index. 
+
+```{r}
+URLtoCrawl <- "https://www.bilbasen.dk/brugt/bil/vw?fuel=0&yearfrom=2010&yearto=2010&pricefrom=0&priceto=100000&mileagefrom=-1&mileageto=10000001&zipcode=0000&includeengroscvr=false&includesellforcustomer=true&includewithoutvehicleregistrationtax=true&includeleasing=false&page=1"
+website <- read_html(URLtoCrawl)
+```
+To get the number of pages we first need to inspect how many hits we just queried. 
+
+```{r}
+NumberOfHits <- website %>% html_nodes(".scrambledtab") %>% html_text(trim = TRUE)
+NumberOfHits
+```
+From the above we see that the first element contains the total number of hits hence we take
+
+```{r}
+NumberOfHits <- NumberOfHits[1]
+```
+
+And then we can do some regular expression magic (I called it magic but rather it is a cumbersome method that can surely be improved)
+
+```{r}
+NumberOfHits <- as.numeric(gsub(".+\\((\\d+).","\\1",gsub("\\.","",NumberOfHits)))
+NumberOfHits
+```
+There we go, we now know the number of hits and to find the number of pages we simple divide by the standard page size. At bilbasen.dk it is 32. 
+
+```{r}
+NumberOfPages <- ceiling(NumberOfHits/32)
+```
+
+Now we know the number of pages to crawl through and we can do this by simply looping through each page, grow a vector containing the data of interest and finally construct a data frame to contain it all.
+This method requires we initialize the vectors we grow inside our loop. 
+
+```{r}
+#Initialize
+CarmakeDetail <- character()
+CarConsumption <- character()
+CarMileage <- character()
+CarYear <- character()
+CarRegion <- character()
+CarPrice <- character()
+```
+and next it is a matter of constructing the loop through each page at bilbasen.dk
+
+
+```{r}
+for(i in 1:NumberOfPages) {
+  
+  URLtoCrawl <- gsub(paste("page=",i-1,sep=""),paste("page=",i,sep=""),URLtoCrawl)
+  website <- read_html(URLtoCrawl)
+  
+  #Detailed description of car make
+  CarmakeDetail <- c(CarmakeDetail,website %>% html_nodes(".darkLink") %>% html_text(trim = TRUE))
+
+  #Car price
+  CarPrice <- c(CarPrice, website %>% html_nodes(".listing-price")  %>% html_text(trim = TRUE))
+  
+  #Car region
+  CarRegion <- c(CarRegion, website %>% html_nodes(".listing-region")  %>% html_text(trim = TRUE))
+  
+  #Car metrics
+  CarListingData <- website %>% html_nodes(".listing-data")  %>% html_text(trim = TRUE)
+  CarConsumption <- c(CarConsumption, CarListingData[1:4==2])
+  CarMileage <- c(CarMileage, CarListingData[1:4==3])
+  CarYear <- c(CarYear, CarListingData[1:4==4])
+}
+```
+Finally we create a data frame based on the above data vectors. 
+
+```{R}
+#Create dataframe
+df = data.frame(CarmakeDetail, 
+                Year = CarYear,
+                Model = factor(gsub("^\\w+{1}[[:blank:]](\\w+).*$","\\1",CarmakeDetail)),
+                MakeModel = gsub("^(\\w+{1}[[:blank:]]\\w+{1}).*$","\\1",CarmakeDetail),
+                Region = CarRegion, 
+                Make = factor(gsub("^((\\w+){1}\\w+).*$","\\1",CarmakeDetail)),
+                Engine = as.numeric(gsub(",",".",gsub("^.+[[:blank:]](\\d,\\d+).*$","\\1",CarmakeDetail))),
+                YearNumeric = as.numeric(CarYear),
+                Price = as.numeric(gsub("\\.","",gsub(" kr.", "", CarPrice))),
+                Mileage = as.integer(gsub("\\.","",CarMileage)),
+                Consumption = as.numeric(gsub(",",".",(gsub(".*?([0-9]+,[0-9]).*", "\\1", CarConsumption))))
+                )
+```
