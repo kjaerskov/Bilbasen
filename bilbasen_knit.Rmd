@@ -9,19 +9,20 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Crawl bilbasen.dk
+## A web crawler for bilbasen.dk - but why?
 
-I wanted to practice web crawling skills and opted for crawling [bilbasen.dk](http://www.bilbasen.dk). It is fairly well structured and as I plan on buying a car in a near future the choice was further justified. 
+I wanted to practice web crawling skills and looked for suited sites to train on. As I am planning on buying a car in a near future I headed to [bilbasen.dk](http://www.bilbasen.dk) (FYI, a Danish site for used cars). I was happy to discover that the site is fairly well structured and thus my choice was further justified. To sum it up, this small tutorial is on my first web crawler to fetch data on old cars!
 
-First we load the neccessary libraries.
+## The code part
+Searching the web I discovered `rvest`. A package for R that brands itself as *easy web scraping with R*. It is compatible with `magrittr` and we can thus apply these nifty looking chains using the `%>%` operator. I strongly recommend to get a bit acquainted with this package as its forward pipe operator (the `%>%`) can tremendously tidy up your R code. And yes, it is part of the **tidyverse** which is a must have for aspiring data scientists. I will not go into details with the pipe operator but just casually drop this link [magrittr](http://magrittr.tidyverse.org/).
+
+After installing the package we load it.
+
 ```{r message=FALSE, warning=FALSE}
-library('ggplot2') # visualization
-library('dplyr') # data manipulation
-library('randomForest') # classification algorithm
 library('rvest')
 ```
 
-Next we enter the page we wish to crawl and read the content of that webpage. Note how the search queries is embedded in the link and how the page is paginated by the "page=1" at the end. The latter allow us to crawl trough all the pages using a simple page number index. 
+Next we need to inspect the URL we want to crawl. Ultimately we want to read the content of that page and fetch its data of interest but before we do it, pay close attention to how its structured. Note how the search queries is embedded in the link and how the page is paginated by the "page=1" at the end. The latter allow us to crawl trough all the pages using a simple page number index. 
 
 ```{r}
 URLtoCrawl <- "https://www.bilbasen.dk/brugt/bil/vw?fuel=0&yearfrom=2010&yearto=2010&pricefrom=0&priceto=100000&mileagefrom=-1&mileageto=10000001&zipcode=0000&includeengroscvr=false&includesellforcustomer=true&includewithoutvehicleregistrationtax=true&includeleasing=false&page=1"
