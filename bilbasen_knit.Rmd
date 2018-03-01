@@ -1,5 +1,5 @@
 ---
-title: "Bilbasen"
+title: "A web scraper for bilbasen.dk"
 author: "Frederik Holmelund Kjærskov"
 date: "28 February 2018"
 output: html_document
@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## A web scraper for bilbasen.dk - but why?
 
-I wanted to practice web scraping skills and looked for suited sites to train on. As I am planning on buying a car in a near future I headed to [bilbasen.dk](http://www.bilbasen.dk) (FYI, a Danish site for used cars). I was happy to discover that the site is fairly well structured and thus my choice was further justified. To sum it up, this small tutorial is on my first web crawler to fetch data on old cars!
+I wanted to practice web scraping skills and looked for suited sites to train on. As I am planning on buying a car in a near future I headed to [bilbasen.dk](http://www.bilbasen.dk) (FYI, a Danish site for used cars). I was happy to discover that the site is fairly well structured and thus my choice was further justified. To sum it up, this small tutorial is on my first web scraper to fetch data on old cars!
 
 ## The code part
 Searching the web I discovered `rvest`. A package for R that brands itself as *easy web scraping with R*. It is compatible with `magrittr` and we can thus apply these nifty looking chains using the `%>%` operator. I strongly recommend to get a bit acquainted with this package as its forward pipe operator (the `%>%`) can tremendously tidy up your R code. And yes, it is part of the **tidyverse** which is a must have for aspiring data scientists. I will not go into details with the pipe operator (frankly a bunch of smart people know much more about it) but just casually drop this link [magrittr](http://magrittr.tidyverse.org/).
@@ -24,7 +24,7 @@ library('rvest')
 
 Next we need to inspect the URL we want to crawl. Ultimately we want to read the content of that page and fetch its data of interest but before we do it, pay close attention to how the link itself is structured. Note how the search query is embedded in the link and how the page is paginated by the "page=1" at the end. The latter allow us to crawl trough all the pages using a simple page number index. Most sites have an advanced search pane where searchable parameters can easily be deciphered from the URL query string once the search is submitted. From the below string `&yearfrom=2010&yearto=2016` readily tells us to search for cars produced from 2010 to 2016. 
 
-All in all, we query bilbasen.dk for all VW cars since 2010 but limit the search to cars where tax is paid `&includewithoutvehicleregistrationtax=false` and avoid leased cars `&includeleasing=false`. The content of the webpage is stored in the list `website` using the `read_html` function form `rvest`.
+For this specific example, we query bilbasen.dk for all VW cars from 2010 to 2016 but limit the search to cars where tax is paid `&includewithoutvehicleregistrationtax=false`, mileage is less than 100.000 km `&priceto=100000` and avoid leased cars `&includeleasing=false`. The content of the webpage is stored in the list `website` using the `read_html` function from `rvest`.
 
 ```{r}
 URLtoCrawl <- "https://www.bilbasen.dk/brugt/bil/vw?fuel=0&yearfrom=2010&yearto=2016&pricefrom=0&priceto=100000&mileagefrom=-1&mileageto=10000001&zipcode=0000&includeengroscvr=false&includesellforcustomer=true&includewithoutvehicleregistrationtax=false&includeleasing=false&page=1"
@@ -45,7 +45,7 @@ From the above we see that the first element in `NumberOfHits` contains the tota
 NumberOfHits <- NumberOfHits[1]
 ```
 
-Next we are going to do some regular expression magic (I called it magic but rather it is a cumbersome method that can surely be improved, suggestions are welcome). It is a biased and totally on my own account when I say. "There is no web scraping without regular expressions". Again and again I am faced with need to clean text strings using regular expressions. To get the pure numericals of the number of hits we apply the following:
+Next we are going to do some regular expression magic (I called it magic but rather it is a cumbersome method that can surely be improved, suggestions are welcome). It is biased and totally on my own account when I say. "There is no web scraping without regular expressions". Again and again I am faced with the need to clean text strings using regular expressions. To get the pure numericals of the number of hits we apply the following:
 
 ```{r}
 #Keep the number only
@@ -123,7 +123,7 @@ summary(df)
 ```
 
 
-And that is it. We now scraped a website using the HTML query string and looping through all the search result pages. Helped by `rvest` and **regular expressions**. 
+And that is it. We now scraped a website using the HTML query string and looping through all the search result pages. Helped by `rvest` and regular expressions. In another post I will use this scraper to fetch data and analyze it. 
 
-You can find this RMarkdown source file here on GitHub. 
+You can find this RMarkdown source file here on GitHub.
 [bilbasen RMarkdown file](https://github.com/kjaerskov/Bilbasen/blob/master/bilbasen_knit.Rmd)
