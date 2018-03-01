@@ -1,7 +1,7 @@
 ---
 title: "Bilbasen"
 author: "Frederik Holmelund Kjærskov"
-date: "23 February 2018"
+date: "28 February 2018"
 output: html_document
 ---
 
@@ -9,12 +9,12 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## A web crawler for bilbasen.dk - but why?
+## A web scraper for bilbasen.dk - but why?
 
-I wanted to practice web crawling skills and looked for suited sites to train on. As I am planning on buying a car in a near future I headed to [bilbasen.dk](http://www.bilbasen.dk) (FYI, a Danish site for used cars). I was happy to discover that the site is fairly well structured and thus my choice was further justified. To sum it up, this small tutorial is on my first web crawler to fetch data on old cars!
+I wanted to practice web scraping skills and looked for suited sites to train on. As I am planning on buying a car in a near future I headed to [bilbasen.dk](http://www.bilbasen.dk) (FYI, a Danish site for used cars). I was happy to discover that the site is fairly well structured and thus my choice was further justified. To sum it up, this small tutorial is on my first web crawler to fetch data on old cars!
 
 ## The code part
-Searching the web I discovered `rvest`. A package for R that brands itself as *easy web scraping with R*. It is compatible with `magrittr` and we can thus apply these nifty looking chains using the `%>%` operator. I strongly recommend to get a bit acquainted with this package as its forward pipe operator (the `%>%`) can tremendously tidy up your R code. And yes, it is part of the **tidyverse** which is a must have for aspiring data scientists. I will not go into details with the pipe operator but just casually drop this link [magrittr](http://magrittr.tidyverse.org/).
+Searching the web I discovered `rvest`. A package for R that brands itself as *easy web scraping with R*. It is compatible with `magrittr` and we can thus apply these nifty looking chains using the `%>%` operator. I strongly recommend to get a bit acquainted with this package as its forward pipe operator (the `%>%`) can tremendously tidy up your R code. And yes, it is part of the **tidyverse** which is a must have for aspiring data scientists. I will not go into details with the pipe operator (frankly a bunch of smart people know much more about it) but just casually drop this link [magrittr](http://magrittr.tidyverse.org/).
 
 After installing the package we load it.
 
@@ -22,54 +22,62 @@ After installing the package we load it.
 library('rvest')
 ```
 
-Next we need to inspect the URL we want to crawl. Ultimately we want to read the content of that page and fetch its data of interest but before we do it, pay close attention to how its structured. Note how the search queries is embedded in the link and how the page is paginated by the "page=1" at the end. The latter allow us to crawl trough all the pages using a simple page number index. 
+Next we need to inspect the URL we want to crawl. Ultimately we want to read the content of that page and fetch its data of interest but before we do it, pay close attention to how the link itself is structured. Note how the search query is embedded in the link and how the page is paginated by the "page=1" at the end. The latter allow us to crawl trough all the pages using a simple page number index. Most sites have an advanced search pane where searchable parameters can easily be deciphered from the URL query string once the search is submitted. From the below string `&yearfrom=2010&yearto=2016` readily tells us to search for cars produced from 2010 to 2016. 
+
+All in all, we query bilbasen.dk for all VW cars since 2010 but limit the search to cars where tax is paid `&includewithoutvehicleregistrationtax=false` and avoid leased cars `&includeleasing=false`. The content of the webpage is stored in the list `website` using the `read_html` function form `rvest`.
 
 ```{r}
-URLtoCrawl <- "https://www.bilbasen.dk/brugt/bil/vw?fuel=0&yearfrom=2010&yearto=2010&pricefrom=0&priceto=100000&mileagefrom=-1&mileageto=10000001&zipcode=0000&includeengroscvr=false&includesellforcustomer=true&includewithoutvehicleregistrationtax=true&includeleasing=false&page=1"
+URLtoCrawl <- "https://www.bilbasen.dk/brugt/bil/vw?fuel=0&yearfrom=2010&yearto=2016&pricefrom=0&priceto=100000&mileagefrom=-1&mileageto=10000001&zipcode=0000&includeengroscvr=false&includesellforcustomer=true&includewithoutvehicleregistrationtax=false&includeleasing=false&page=1"
 website <- read_html(URLtoCrawl)
 ```
-To get the number of pages we first need to inspect how many hits we just queried. 
+For us to crawl through the all pages we need the page count returned from our query string. This is a good starting point to introduce the `html_nodes` function. It allows us to search and return only specific HMTL nodes in our website. I have had great use of the [SelectorGadget](http://selectorgadget.com/) browser extension to Google Chrome. It turns the selection of the right node into a simple matter of pointing and clicking. Simply click the element you wish to extract and the gadget returns the HTML node (or XPath). This node we then enter in the `html_nodes` function and store its content in a new variable in R. 
 
+To get the number of hits from the HTML query string we type:
 ```{r}
+#Extract number of hits
 NumberOfHits <- website %>% html_nodes(".scrambledtab") %>% html_text(trim = TRUE)
 NumberOfHits
 ```
-From the above we see that the first element contains the total number of hits hence we take
+From the above we see that the first element in `NumberOfHits` contains the total number of hits and we can omit the rest. 
 
 ```{r}
+#Keep the total number of hits only
 NumberOfHits <- NumberOfHits[1]
 ```
 
-And then we can do some regular expression magic (I called it magic but rather it is a cumbersome method that can surely be improved)
+Next we are going to do some regular expression magic (I called it magic but rather it is a cumbersome method that can surely be improved, suggestions are welcome). It is a biased and totally on my own account when I say. "There is no web scraping without regular expressions". Again and again I am faced with need to clean text strings using regular expressions. To get the pure numericals of the number of hits we apply the following:
 
 ```{r}
+#Keep the number only
 NumberOfHits <- as.numeric(gsub(".+\\((\\d+).","\\1",gsub("\\.","",NumberOfHits)))
 NumberOfHits
 ```
-There we go, we now know the number of hits and to find the number of pages we simple divide by the standard page size. At bilbasen.dk it is 32. 
+There we go, we now know the number of hits. To find the number of pages we need to know the number of hits returned per page. This is usually something you decide on through your browser and let the page store a cookie on your computer. Is varies from page to page. For bilbasen.dk we divide by the standard page size which is 32 thus:
 
 ```{r}
+#Calculate number of pages
 NumberOfPages <- ceiling(NumberOfHits/32)
 ```
 
-Now we know the number of pages to crawl through and we can do this by simply looping through each page, grow a vector containing the data of interest and finally construct a data frame to contain it all.
+Eureka! Now we know the number of pages to crawl through. The rest is simply to loop through each page, grow a vector containing the data of interest and finally construct a data frame to contain it all. 
 This method requires we initialize the vectors we grow inside our loop. 
 
 ```{r}
-#Initialize
-CarmakeDetail <- character()
-CarConsumption <- character()
-CarMileage <- character()
-CarYear <- character()
-CarRegion <- character()
-CarPrice <- character()
+#Initialize vectors
+CarmakeDetail <- NULL
+CarConsumption <- NULL
+CarMileage <- NULL
+CarYear <- NULL
+CarRegion <- NULL
+CarPrice <- NULL
 ```
-and next it is a matter of constructing the loop through each page at bilbasen.dk
-
+and next we construct the loop that will take us through all the seach result pages at bilbasen.dk.
 
 ```{r}
+#Loop through the total number of pages
 for(i in 1:NumberOfPages) {
   
+  #Read page number "i"
   URLtoCrawl <- gsub(paste("page=",i-1,sep=""),paste("page=",i,sep=""),URLtoCrawl)
   website <- read_html(URLtoCrawl)
   
@@ -89,9 +97,10 @@ for(i in 1:NumberOfPages) {
   CarYear <- c(CarYear, CarListingData[1:4==4])
 }
 ```
+
 Finally we create a data frame based on the above data vectors. 
 
-```{R}
+```{R warning=FALSE}
 #Create dataframe
 df = data.frame(CarmakeDetail, 
                 Year = CarYear,
@@ -106,3 +115,15 @@ df = data.frame(CarmakeDetail,
                 Consumption = as.numeric(gsub(",",".",(gsub(".*?([0-9]+,[0-9]).*", "\\1", CarConsumption))))
                 )
 ```
+
+And what did we get?
+
+```{r}
+summary(df)
+```
+
+
+And that is it. We now scraped a website using the HTML query string and looping through all the search result pages. Helped by `rvest` and **regular expressions**. 
+
+You can find this RMarkdown source file here on GitHub. 
+[bilbasen RMarkdown file](https://github.com/kjaerskov/Bilbasen/blob/master/bilbasen_knit.Rmd)
