@@ -1,6 +1,6 @@
 ---
 title: "A web scraper for bilbasen.dk"
-author: "Frederik Holmelund Kjærskov"
+author: "Frederik Holmelund KjÃ¦rskov"
 date: "28 February 2018"
 output: html_document
 ---
