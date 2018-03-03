@@ -1,6 +1,6 @@
 ---
 title: "A web scraper for bilbasen.dk"
-author: "Frederik Holmelund Kjærskov"
+author: "Frederik Holmelund Kjaerskov"
 date: "28 February 2018"
 output: html_document
 ---
@@ -27,7 +27,7 @@ Next we need to inspect the URL we want to crawl. Ultimately we want to read the
 For this specific example, we query bilbasen.dk for all VW cars from 2010 to 2016 but limit the search to cars where tax is paid `&includewithoutvehicleregistrationtax=false`, mileage is less than 100.000 km `&priceto=100000` and avoid leased cars `&includeleasing=false`. The content of the webpage is stored in the list `website` using the `read_html` function from `rvest`.
 
 ```{r}
-URLtoCrawl <- "https://www.bilbasen.dk/brugt/bil/vw?fuel=0&yearfrom=2010&yearto=2016&pricefrom=0&priceto=100000&mileagefrom=-1&mileageto=10000001&zipcode=0000&includeengroscvr=false&includesellforcustomer=true&includewithoutvehicleregistrationtax=false&includeleasing=false&page=1"
+URLtoCrawl <- "https://www.bilbasen.dk/brugt/bil/vw?fuel=0&yearfrom=2010&yearto=2018&pricefrom=0&priceto=10000000&mileagefrom=-1&mileageto=10000001&zipcode=0000&includeengroscvr=false&includesellforcustomer=true&includewithoutvehicleregistrationtax=false&includeleasing=false&page=1"
 website <- read_html(URLtoCrawl)
 ```
 For us to crawl through the all pages we need the page count returned from our query string. This is a good starting point to introduce the `html_nodes` function. It allows us to search and return only specific HMTL nodes in our website. I have had great use of the [SelectorGadget](http://selectorgadget.com/) browser extension to Google Chrome. It turns the selection of the right node into a simple matter of pointing and clicking. Simply click the element you wish to extract and the gadget returns the HTML node (or XPath). This node we then enter in the `html_nodes` function and store its content in a new variable in R. 
@@ -65,6 +65,7 @@ This method requires we initialize the vectors we grow inside our loop.
 ```{r}
 #Initialize vectors
 CarmakeDetail <- NULL
+CarURL <- NULL
 CarConsumption <- NULL
 CarMileage <- NULL
 CarYear <- NULL
@@ -77,13 +78,14 @@ and next we construct the loop that will take us through all the seach result pa
 #Loop through the total number of pages
 for(i in 1:NumberOfPages) {
   
-  #Read page number "i"
+  # Set URL to equal increasing page number denoted by i
   URLtoCrawl <- gsub(paste("page=",i-1,sep=""),paste("page=",i,sep=""),URLtoCrawl)
   website <- read_html(URLtoCrawl)
   
   #Detailed description of car make
-  CarmakeDetail <- c(CarmakeDetail,website %>% html_nodes(".darkLink") %>% html_text(trim = TRUE))
-
+  CarmakeDetail <- c(CarmakeDetail, website %>% html_nodes(".darkLink") %>% html_text(trim = TRUE))
+  CarURL <- c(CarURL, website %>% html_nodes(".darkLink") %>% html_attr("href"))
+  
   #Car price
   CarPrice <- c(CarPrice, website %>% html_nodes(".listing-price")  %>% html_text(trim = TRUE))
   
@@ -102,16 +104,20 @@ Finally we create a data frame based on the above data vectors.
 
 ```{R warning=FALSE}
 #Create dataframe
-df = data.frame(CarmakeDetail, 
+#Create dataframe
+df = data.frame(CarmakeDetail,
+                URL = CarURL,
                 Year = CarYear,
-                Model = factor(gsub("^\\w+{1}[[:blank:]](\\w+).*$","\\1",CarmakeDetail)),
-                MakeModel = gsub("^(\\w+{1}[[:blank:]]\\w+{1}).*$","\\1",CarmakeDetail),
+                Model = factor(gsub("^\\w+{1}[[:blank:]](.+)[[:blank:]]\\d,.*$","\\1",CarmakeDetail)),
+                MakeModel = gsub("^(.+)[[:blank:]]\\d,.*$","\\1",CarmakeDetail),
                 Region = CarRegion, 
                 Make = factor(gsub("^((\\w+){1}\\w+).*$","\\1",CarmakeDetail)),
                 Engine = as.numeric(gsub(",",".",gsub("^.+[[:blank:]](\\d,\\d+).*$","\\1",CarmakeDetail))),
+                Doors = gsub("^.+[[:blank:]](\\w{2,})$","\\1",CarmakeDetail),
+                Horsepower = as.numeric(gsub("^.+[[:blank:]](\\d{2,}).*$","\\1",CarmakeDetail)),
                 YearNumeric = as.numeric(CarYear),
                 Price = as.numeric(gsub("\\.","",gsub(" kr.", "", CarPrice))),
-                Mileage = as.integer(gsub("\\.","",CarMileage)),
+                Mileage = as.numeric(gsub("\\.","",CarMileage)),
                 Consumption = as.numeric(gsub(",",".",(gsub(".*?([0-9]+,[0-9]).*", "\\1", CarConsumption))))
                 )
 ```
@@ -122,8 +128,7 @@ And what did we get?
 summary(df)
 ```
 
-
 And that is it. We now scraped a website using the HTML query string and looping through all the search result pages. Helped by `rvest` and regular expressions. In another post I will use this scraper to fetch data and analyze it. 
 
 You can find this RMarkdown source file here on GitHub.
-[bilbasen RMarkdown file](https://github.com/kjaerskov/Bilbasen/blob/master/bilbasen_knit.Rmd)
+[bilbasen RMarkdown file](https://github.com/kjaerskov/Bilbasen/blob/master/ScrapeBilbasen.Rmd)
