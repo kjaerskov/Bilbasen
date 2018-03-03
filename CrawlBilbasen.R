@@ -19,7 +19,7 @@ closeAllConnections()
 
 
 #Get data from URL
-URLtoCrawl <- "https://www.bilbasen.dk/brugt/bil/vw?fuel=0&yearfrom=2010&yearto=2010&pricefrom=0&priceto=1000000&mileagefrom=-1&mileageto=10000001&zipcode=0000&includeengroscvr=false&includesellforcustomer=true&includewithoutvehicleregistrationtax=true&includeleasing=false&page=1"
+URLtoCrawl <- "https://www.bilbasen.dk/brugt/bil/vw?fuel=0&yearfrom=2010&yearto=2010&pricefrom=0&priceto=10000000&mileagefrom=-1&mileageto=10000001&zipcode=0000&includeengroscvr=false&includesellforcustomer=true&includewithoutvehicleregistrationtax=false&includeleasing=false&page=1"
 website <- read_html(URLtoCrawl)
 NumberOfHits <- website %>% html_nodes(".scrambledtab") %>% html_text(trim = TRUE)
 NumberOfHits <- as.numeric(gsub(".+\\((\\d+).","\\1",gsub("\\.","",NumberOfHits[1])))
@@ -39,7 +39,6 @@ NumberOfPages <- ceiling(NumberOfHits/32)
 for(i in 1:NumberOfPages) {
   
   URLtoCrawl <- gsub(paste("page=",i-1,sep=""),paste("page=",i,sep=""),URLtoCrawl)
-  print(URLtoCrawl)
   
   #Detailed description of car make
   CarmakeDetail <- c(CarmakeDetail,website %>% html_nodes(".darkLink") %>% html_text(trim = TRUE))
@@ -74,7 +73,6 @@ df = data.frame(CarmakeDetail,
 
 #Remove duplcates rows and data with n.a. data
 df <- na.omit(df)
-df <- unique(df)
 
 YearBreaks <- c(2000, 2005, 2010, 2018)
 PriceBreaks <- c(0, 250000, 500000, 1e6) 

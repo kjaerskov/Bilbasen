@@ -1,0 +1,101 @@
+---
+title: "Scrape an used car website and select a fair priced car using Random Forest"
+author: "Frederik Holmelund Kjærskov"
+date: "3 March 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Scraping an used car site - bilbasen.dk
+
+As mentioned in [this post](https://r-tify.blogspot.dk/2018/03/a-web-scraper-for-bilbasendk.html) I built a web scraper for an used car site to practice web scraping skills. This time we go ahead and apply this scraper, collect used car data and train and apply a Random Forest algorithm to predict used car prices. As a bonus, we will interpretate the results from the Random Forest to select a fairly priced car. Remember, I did think about buying a car in a near future. 
+
+Because the scraper itself is explained in [my previous post](https://r-tify.blogspot.dk/2018/03/a-web-scraper-for-bilbasendk.html) I will rather quickly run through it. 
+
+First we load the neccessay libraries and perform a little cleaning up.
+
+```{r warning=FALSE, message=FALSE}
+# Crawl bilbasen
+library('ggplot2') # visualization
+library('scales') # visualization
+library('dplyr') # data manipulation
+library('randomForest') # classification algorithm
+library('rvest') # web scraper
+
+# Clean up
+rm(list=ls())
+```
+
+We then enter the search URL we wish to scrape the contents of and determine how many pages we need to run through. 
+
+```{R}
+#Get data from URL
+URLtoCrawl <- "https://www.bilbasen.dk/brugt/bil/vw?fuel=0&yearfrom=2010&yearto=2010&pricefrom=0&priceto=10000000&mileagefrom=-1&mileageto=10000001&zipcode=0000&includeengroscvr=false&includesellforcustomer=true&includewithoutvehicleregistrationtax=false&includeleasing=false&page=1"
+website <- read_html(URLtoCrawl)
+NumberOfHits <- website %>% html_nodes(".scrambledtab") %>% html_text(trim = TRUE)
+NumberOfHits <- as.numeric(gsub(".+\\((\\d+).","\\1",gsub("\\.","",NumberOfHits[1])))
+
+#Cookie set to display 32 results per page
+NumberOfPages <- ceiling(NumberOfHits/32)
+```
+
+Next we initialize the vectors we use to grow our data in 
+
+```{R}
+#Initialize
+CarmakeDetail <- NULL
+CarURL <- NULL
+CarConsumption <- NULL
+CarMileage <- NULL
+CarYear <- NULL
+CarRegion <- NULL
+CarPrice <- NULL
+```
+
+and run through all pages and ultimately create a data frame containing the data of interest. The creation of the data frame is actually a time consuming part because regular expressions do take some time and practice to master. 
+
+```{R warning=false}
+for(i in 1:NumberOfPages) {
+  
+  # Set URL to equal increasing page number denoted by i
+  URLtoCrawl <- gsub(paste("page=",i-1,sep=""),paste("page=",i,sep=""),URLtoCrawl)
+  website <- read_html(URLtoCrawl)
+  
+  #Detailed description of car make
+  CarmakeDetail <- c(CarmakeDetail, website %>% html_nodes(".darkLink") %>% html_text(trim = TRUE))
+  CarURL <- c(CarURL, website %>% html_nodes(".darkLink") %>% html_attr("href"))
+  
+  #Car price
+  CarPrice <- c(CarPrice, website %>% html_nodes(".listing-price")  %>% html_text(trim = TRUE))
+  
+  #Car region
+  CarRegion <- c(CarRegion, website %>% html_nodes(".listing-region")  %>% html_text(trim = TRUE))
+  
+  #Car metrics
+  CarListingData <- website %>% html_nodes(".listing-data")  %>% html_text(trim = TRUE)
+  CarConsumption <- c(CarConsumption, CarListingData[1:4==2])
+  CarMileage <- c(CarMileage, CarListingData[1:4==3])
+  CarYear <- c(CarYear, CarListingData[1:4==4])
+}
+
+#Create dataframe
+df = data.frame(CarmakeDetail,
+                URL = CarURL,
+                Year = CarYear,
+                Model = factor(gsub("^\\w+{1}[[:blank:]](.+)[[:blank:]]\\d,.*$","\\1",CarmakeDetail)),
+                MakeModel = gsub("^(.+)[[:blank:]]\\d,.*$","\\1",CarmakeDetail),
+                Region = CarRegion, 
+                Make = factor(gsub("^((\\w+){1}\\w+).*$","\\1",CarmakeDetail)),
+                Engine = as.numeric(gsub(",",".",gsub("^.+[[:blank:]](\\d,\\d+).*$","\\1",CarmakeDetail))),
+                Doors = gsub("^.+[[:blank:]](\\w{2,})$","\\1",CarmakeDetail),
+                Horsepower = as.numeric(gsub("^.+[[:blank:]](\\d{2,}).*$","\\1",CarmakeDetail)),
+                YearNumeric = as.numeric(CarYear),
+                Price = as.numeric(gsub("\\.","",gsub(" kr.", "", CarPrice))),
+                Mileage = as.numeric(gsub("\\.","",CarMileage)),
+                Consumption = as.numeric(gsub(",",".",(gsub(".*?([0-9]+,[0-9]).*", "\\1", CarConsumption))))
+                )
+```
+
