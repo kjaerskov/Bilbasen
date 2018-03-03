@@ -10,18 +10,18 @@ source("Crawlbilbasen.R")
 #Remove rows with n.a. data
 df <- na.omit(df)
 
-# Replace 
-
 #Randomize order for us to split data set into training and test sets
 set.seed(666)
 dfmodel <- df[sample(nrow(df),nrow(df)),c("URL", "Model", "Year", "Engine", "Horsepower", "Doors" ,"Price","Mileage","Consumption", "Region")]
 
 #Train using two thirds of the dataset, test using the last third
-trainingData <- dfmodel[1:ceil(nrow(df)*(2/3)),]
+trainingData <- dfmodel[1:ceiling(nrow(df)*(2/3)),]
 testData <- dfmodel[1:floor(nrow(df)*(1/3)),]
 
 # Build the model using the specified variables
-rfModelPrice <- randomForest(Price ~ Year + Engine + Mileage + Consumption + Doors + Horsepower + Model + Region, data = trainingData)
+rfModelPrice <- randomForest(Price ~ Year + Engine + Mileage + Consumption + Doors + Horsepower + Model + Region, 
+                             data = trainingData, 
+                             proximity = TRUE)
 
 # Get importance of variables
 importance    <- importance(rfModelPrice)

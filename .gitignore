@@ -3,3 +3,5 @@
 .RData
 .Ruserdata
 *.html
+CrawlBilbasen_RandomForest.spin.R
+CrawlBilbasen_RandomForest.spin.Rmd
