@@ -2,7 +2,11 @@
 title: "A web scraper for bilbasen.dk"
 author: "Frederik Holmelund Kjaerskov"
 date: "28 February 2018"
-output: html_document
+output: 
+  html_document: 
+    theme: null
+  html_notebook: 
+    theme: default
 ---
 
 ```{r setup, include=FALSE}
@@ -129,6 +133,7 @@ summary(df)
 
 We have now scraped a website using the HTML query string and looping through all the search result pages. Helped by `rvest` and regular expressions. In another post I will use this scraper to fetch data and analyze it. 
 
-You can find this RMarkdown source file as well as a cleaner R script from Github
-- [RMarkdown file](https://github.com/kjaerskov/Bilbasen/blob/master/ScrapeBilbasen.Rmd)
-- [R script](https://github.com/kjaerskov/Bilbasen/blob/master/CrawlBilbasen.R)
+You can find this RMarkdown source file as well as a cleaner R script from Github.
+
+* Link [RMarkdown file](https://github.com/kjaerskov/Bilbasen/blob/master/ScrapeBilbasen.Rmd)
+* Link [R script](https://github.com/kjaerskov/Bilbasen/blob/master/CrawlBilbasen.R)

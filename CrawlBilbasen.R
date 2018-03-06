@@ -6,7 +6,7 @@
 library('rvest') # web scraper
 
 #Get data from URL
-URLtoCrawl <- "https://www.bilbasen.dk/brugt/bil/vw?fuel=0&yearfrom=2010&yearto=2010&pricefrom=0&priceto=10000000&mileagefrom=-1&mileageto=10000001&zipcode=0000&includeengroscvr=false&includesellforcustomer=true&includewithoutvehicleregistrationtax=false&includeleasing=false&page=1"
+URLtoCrawl <- "https://www.bilbasen.dk/brugt/bil/vw?fuel=0&yearfrom=2010&yearto=2018&pricefrom=0&priceto=10000000&mileagefrom=-1&mileageto=10000001&zipcode=0000&includeengroscvr=false&includesellforcustomer=true&includewithoutvehicleregistrationtax=false&includeleasing=false&page=1"
 website <- read_html(URLtoCrawl)
 NumberOfHits <- website %>% html_nodes(".scrambledtab") %>% html_text(trim = TRUE)
 NumberOfHits <- as.numeric(gsub(".+\\((\\d+).","\\1",gsub("\\.","",NumberOfHits[1])))
